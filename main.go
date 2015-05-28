@@ -4,12 +4,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 )
 
 var (
 	nocreate = flag.Bool("c", false, "not create new empty file even if that does not exists.")
-	names    []string
+	times    = flag.String("t", "", "change the access and the modification times.")
+	//timesregexp = regexp.MustCompile("^(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])([0-5][0-9])(\\.[0-5][0-9])?$")
+	timesregexp = regexp.MustCompile("^(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])([0-5][0-9])$")
+	names       []string
 )
 
 func main() {
@@ -19,6 +23,11 @@ func main() {
 		usage()
 	}
 
+	if *times != "" && !timesregexp.MatchString(*times) {
+		eprintln("goutouch: out of range or illegal time specification: MMDDhhmm")
+		os.Exit(1)
+	}
+
 	for _, name := range flag.Args() {
 		if !exists(name) && !createEmptyfile(name) {
 			continue
@@ -26,9 +35,12 @@ func main() {
 		names = append(names, name)
 	}
 
-	for _, name := range names {
-		t, _ := time.Parse("2006-Jan-02", "2010-Oct-10")
-		os.Chtimes(name, t, t)
+	if *times != "" {
+		for _, name := range names {
+			y := fmt.Sprint(getThisYear())
+			t, _ := time.Parse("20060102150405-0700", y+*times+"00+0900")
+			os.Chtimes(name, t, t)
+		}
 	}
 
 	os.Exit(0)
@@ -54,9 +66,14 @@ func createEmptyfile(filename string) (create bool) {
 	return true
 }
 
+func getThisYear() int {
+	t := time.Now()
+	return t.Year()
+}
+
 func usage() {
 	eprintln("usage:")
-	eprintln("gotouch file ...")
+	eprintln("gotouch [-c] [-t MMDDhhmm] file ...")
 	os.Exit(1)
 }
 
