@@ -1,4 +1,10 @@
 # gotouch
+touch command clone.
+
+## Installation
+```
+$ go get github.com/donke/gotouch
+```
 
 ## License
 
