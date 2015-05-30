@@ -9,23 +9,33 @@ import (
 )
 
 var (
-	nocreate = flag.Bool("c", false, "not create new empty file even if that does not exists.")
-	times    = flag.String("t", "", "change the access and the modification times.")
-	//timesregexp = regexp.MustCompile("^(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])([0-5][0-9])(\\.[0-5][0-9])?$")
-	timesregexp = regexp.MustCompile("^(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])([0-5][0-9])$")
-	names       []string
+	nocreate = flag.Bool("c", false, "")
+	times    = flag.String("t", "", "")
+	tregexp  = regexp.MustCompile(`^((\d{2})?\d{2})?(\d{8})(\.[0-5][0-9])?$`)
+	names    []string
 )
 
-func main() {
-	flag.Parse()
+var usage = `usage: gotouch [options...] file...
 
-	if flag.NArg() == 0 {
-		usage()
+Options:
+  -c Not create new empty file even if that does not exists.
+  -t [[CC]YY]MMDDhhmm[.SS]
+     Change the access and the modification times.
+`
+
+func main() {
+	flag.Usage = func() {
+		fmt.Fprint(os.Stderr, usage)
 	}
 
-	if *times != "" && !timesregexp.MatchString(*times) {
-		eprintln("goutouch: out of range or illegal time specification: MMDDhhmm")
-		os.Exit(1)
+	flag.Parse()
+	if flag.NArg() == 0 {
+		usageAndExit("")
+	}
+
+	// XXX 正規表現にマッチしたからといって日付として正しいとは限らない
+	if *times != "" && !tregexp.MatchString(*times) {
+		usageAndExit("gotouch: out of range or illegal time specification")
 	}
 
 	for _, name := range flag.Args() {
@@ -38,6 +48,7 @@ func main() {
 	if *times != "" {
 		for _, name := range names {
 			y := fmt.Sprint(getThisYear())
+			// XXX マッチした部分文字列を確認して年を足すかどうか判定しないとね
 			t, _ := time.Parse("20060102150405-0700", y+*times+"00+0900")
 			os.Chtimes(name, t, t)
 		}
@@ -71,12 +82,12 @@ func getThisYear() int {
 	return t.Year()
 }
 
-func usage() {
-	eprintln("usage:")
-	eprintln("gotouch [-c] [-t MMDDhhmm] file ...")
+func usageAndExit(message string) {
+	if message != "" {
+		fmt.Fprintln(os.Stderr, message)
+		fmt.Fprintf(os.Stderr, "\n")
+	}
+	flag.Usage()
+	fmt.Fprintf(os.Stderr, "\n")
 	os.Exit(1)
-}
-
-func eprintln(message string) {
-	fmt.Fprintln(os.Stderr, message)
 }
