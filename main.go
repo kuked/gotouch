@@ -6,10 +6,15 @@ import (
 	"os"
 	"regexp"
 	"time"
+
+	"github.com/djherbis/atime"
+	"github.com/donke/manyflags"
 )
 
 var (
+	acctm    = flag.Bool("a", false, "")
 	nocreate = flag.Bool("c", false, "")
+	modtm    = flag.Bool("m", false, "")
 	times    = flag.String("t", "", "")
 	tregexp  = regexp.MustCompile(`^((\d{2})?\d{2})?(\d{8})(\.[0-5][0-9])?$`)
 	names    []string
@@ -18,7 +23,9 @@ var (
 var usage = `usage: gotouch [options...] file...
 
 Options:
+  -a Change the access time of the file.
   -c Not create new empty file even if that does not exists.
+  -m Change the modification time of the file.
   -t [[CC]YY]MMDDhhmm[.SS]
      Change the access and the modification times.
 `
@@ -28,12 +35,17 @@ func main() {
 		fmt.Fprint(os.Stderr, usage)
 	}
 
+	manyflags.OverwriteArgs()
 	flag.Parse()
 	if flag.NArg() == 0 {
 		usageAndExit("")
 	}
 
-	// XXX 正規表現にマッチしたからといって日付として正しいとは限らない
+	if !*acctm && !*modtm {
+		*acctm = true
+		*modtm = true
+	}
+
 	if *times != "" && !tregexp.MatchString(*times) {
 		usageAndExit("gotouch: out of range or illegal time specification")
 	}
@@ -48,9 +60,18 @@ func main() {
 	if *times != "" {
 		for _, name := range names {
 			y := fmt.Sprint(getThisYear())
-			// XXX マッチした部分文字列を確認して年を足すかどうか判定しないとね
 			t, _ := time.Parse("20060102150405-0700", y+*times+"00+0900")
-			os.Chtimes(name, t, t)
+
+			if *acctm && !*modtm {
+				fi, _ := os.Stat(name)
+				mt := fi.ModTime()
+				os.Chtimes(name, t, mt)
+			} else if !*acctm && *modtm {
+				at, _ := atime.Stat(name)
+				os.Chtimes(name, at, t)
+			} else {
+				os.Chtimes(name, t, t)
+			}
 		}
 	}
 
