@@ -27,7 +27,7 @@ func UpdateAtime(name string, atime time.Time) error {
 		return err
 	}
 
-    mtime := fi.ModTime()
+	mtime := fi.ModTime()
 	if err := os.Chtimes(name, atime, mtime); err != nil {
 		return err
 	}
