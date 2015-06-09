@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/donke/gotouch"
@@ -92,8 +93,7 @@ func parseTimeSpecified(t string) (time.Time, error) {
 		return time.Now(), errors.New("")
 	}
 
-	v := timeValue(t)
-	parsed, err := time.Parse("20060102150405-0700", v)
+	parsed, err := time.Parse("20060102150405-0700", timeValue(t))
 	if err != nil {
 		return time.Now(), err
 	}
@@ -102,17 +102,30 @@ func parseTimeSpecified(t string) (time.Time, error) {
 }
 
 func timeValue(t string) string {
+	match := tregexp.FindStringSubmatch(t)
+	ccyy := match[1]
+	mmddhhmm := match[2]
+	ss := match[4]
 	v := ""
-	submatchs := tregexp.FindStringSubmatch(t)
-	if submatchs[1] != "" {
-		v = submatchs[1]
+	if ccyy != "" {
+		// year 2068 problem.
+		if len(ccyy) == 2 {
+			y, _ := strconv.Atoi(ccyy)
+			if y >= 69 && y <= 99 {
+				v = "19" + ccyy
+			} else {
+				v = "20" + ccyy
+			}
+		} else {
+			v = ccyy
+		}
 	} else {
 		y := time.Now()
 		v = fmt.Sprint(y.Year())
 	}
-	v = v + submatchs[2]
-	if submatchs[4] != "" {
-		v = v + submatchs[4]
+	v = v + mmddhhmm
+	if ss != "" {
+		v = v + ss
 	} else {
 		v = v + "00"
 	}
