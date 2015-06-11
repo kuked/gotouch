@@ -18,6 +18,7 @@ var (
 	c = flag.Bool("c", false, "")
 	m = flag.Bool("m", false, "")
 
+	r = flag.String("r", "", "")
 	t = flag.String("t", "", "")
 
 	tregexp = regexp.MustCompile(`^(\d{2}|\d{4})?(\d{8})(\.([0-5][0-9]))?$`)
@@ -30,6 +31,7 @@ Options:
   -a Change the access time of the file.
   -c Not create new empty file even if that does not exists.
   -m Change the modification time of the file.
+  -r Use the access and modification time from the specified file.
   -t [[CC]YY]MMDDhhmm[.SS]
      Change the access and the modification times.
 `
@@ -44,6 +46,12 @@ func main() {
 	flag.Parse()
 	if flag.NArg() == 0 {
 		usageAndExit("")
+	}
+
+	if *r != "" {
+		if !exists(*r) {
+			usageAndExit("gotouch: " + *r + ": No such file or directory")
+		}
 	}
 
 	if *t != "" {
@@ -65,6 +73,14 @@ func main() {
 			os.Exit(1)
 		}
 		names = append(names, name)
+	}
+
+	if *r != "" && *t == "" {
+		for _, name := range names {
+			if err := gotouch.UpdateTimeByFile(name, *r); err != nil {
+				panic(err)
+			}
+		}
 	}
 
 	if *t != "" {

@@ -54,3 +54,22 @@ func UpdateTime(name string, amtime time.Time) error {
 	}
 	return nil
 }
+
+// UpdateTimeByFile ...
+func UpdateTimeByFile(name string, refname string) error {
+	atime, err := atime.Stat(refname)
+	if err != nil {
+		return err
+	}
+
+	fi, err := os.Stat(refname)
+	if err != nil {
+		return err
+	}
+
+	mtime := fi.ModTime()
+	if err := os.Chtimes(name, atime, mtime); err != nil {
+		return err
+	}
+	return nil
+}
